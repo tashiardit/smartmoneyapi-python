@@ -1,0 +1,11 @@
+[project]
+name = "smartmoneyapi"
+version = "1.0.0"
+description = "Python client for SmartMoneyAPI — trade confirmation API for crypto bots"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["requests"]
+license = { text = "MIT" }
+[project.urls]
+Homepage = "https://smartmoneyapi.com"
+Documentation = "https://smartmoneyapi.com/docs"
