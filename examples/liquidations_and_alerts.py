@@ -1,31 +1,49 @@
-"""New in v1.1 — real liquidation feeds, on-chain DeFi liqs, alerts, webhooks."""
-from smartmoneyapi import SmartMoneyClient, verify_webhook_signature
+"""Liquidations — the keyless feeds first, then the keyed ones.
 
-c = SmartMoneyClient()  # reads SMARTMONEY_API_KEY (X-API-Key auth)
+Every field read below was observed on a real response on 2026-08-28.
+"""
+from smartmoneyapi import SmartMoneyClient, SmartMoneyError
 
-# 1) REAL executed liquidation heatmap (Binance/OKX/Bybit/Bitget/BitMEX)
-liq = c.get_liquidations("BTC")
-rh = liq.get("realized_heatmap")            # may be absent in a very calm market
-if rh:
-    print("Executed BTC liqs (24h window):", rh["totals"])
-print("Leverage-projected cascade risk:", liq.get("cascade_risk"))
+pub = SmartMoneyClient()   # no key needed for steps 1-3
 
-# 2) Executed on-chain DeFi lending liquidations (Trader+), from local BSC/AVAX nodes
-oc = c.get_onchain_liquidations(chain="bsc", limit=20)
-print(f"{oc['count']} recent BSC lending liquidations")
-for row in oc["liquidations"][:3]:
-    print(" ", row["protocol"], row.get("repay_usd"), row["tx_hash"])
+# 1) Executed forced liquidations, bucketed by price x time.
+heat = pub.liquidation_heatmap("BTC")
+print(f"{heat['symbol']}: {heat['price_buckets']} price buckets over "
+      f"{heat['window_minutes']} min, {heat['price_min']}-{heat['price_max']}")
 
-# 3) Custom alert (Pro): notify when BTC 8h funding spikes above 5 bps
-#    Metrics/operators: see c.list_alerts()["available_metrics" / "available_operators"]
-# created = c.create_alert("BTC funding spike", "funding_rate", "gt", 0.05, symbol="BTC")
+# 2) Which symbols have a realized feed at all, and how deep it runs.
+for s in pub.liquidation_symbols()["symbols"][:5]:
+    print(f"  {s['symbol']}: {s['count']} events, ${s['total_notional']:,.0f}")
 
-# 4) Register an HMAC-signed outbound webhook (Pro)
-# wh = c.register_webhook("https://yourapp.com/hook", ["HIGH", "MEDIUM"], ["BTC", "ETH"],
-#                         secret="a-long-random-secret-16+chars")
+# 3) What a move would trigger. `oi_band_status` reports "ok" or "split_assumed"
+#    per venue, and `by_exchange[venue]['split_measured']` says whether the
+#    long/short split was measured — an assumed split is never dressed up as one.
+sim = pub.simulate_liquidations("BTC")
+print(f"cascade_risk={sim['cascade_risk']} depth={sim['cascade_depth']} "
+      f"triggered=${sim['triggered_notional_usd']:,.0f} "
+      f"oi_bands={sim['oi_band_status']}")
 
+# 4) The full book. Needs a Trader+ key. `withheld` / `withheld_reason` report
+#    what your tier does not include, rather than silently truncating the ladder.
+keyed = SmartMoneyClient()   # raises if SMARTMONEY_API_KEY is unset
+try:
+    liq = keyed.liquidations("BTC")
+    print("oi_split_source:", liq.get("oi_split_source"),
+          "bands_status:", liq.get("bands_status"),
+          "withheld:", liq.get("withheld"), liq.get("withheld_reason"))
+except SmartMoneyError as e:
+    print("needs a key or a higher tier:", e)
+
+# 5) Alerts and webhooks (Pro). Metrics and operators come from the API itself:
+#    keyed.list_alerts()["available_metrics"] / ["available_operators"]
+# created = keyed.create_alert("BTC funding spike", "funding_rate", "gt", 0.05)
+# wh = keyed.register_webhook("https://yourapp.example/hook",
+#                             ["HIGH", "MEDIUM"], ["BTC", "ETH"],
+#                             secret="a-long-random-secret-16+chars")
+#
 # Verifying a delivery on your receiver (Flask-style):
-#   sig = request.headers["X-SmartMoney-Signature"]
-#   ok = verify_webhook_signature(request.get_data(), sig, "a-long-random-secret-16+chars")
-
-# Not financial advice. Crypto trading involves risk.
+#   from smartmoneyapi import verify_webhook_signature
+#   ok = verify_webhook_signature(request.get_data(),           # raw bytes
+#                                 request.headers["X-SmartMoney-Signature"],
+#                                 "a-long-random-secret-16+chars")
+# Not financial advice.

@@ -1,215 +1,113 @@
-# smartmoneyapi-python
+# smartmoneyapi — Python client
 
-**One GET request. Derivatives + funding + OI + liquidations + whale positioning — before your bot enters.**
-
-[![PyPI version](https://img.shields.io/pypi/v/smartmoneyapi?label=PyPI&color=0ea5e9)](https://pypi.org/project/smartmoneyapi/)
-[![Python](https://img.shields.io/pypi/pyversions/smartmoneyapi?color=3b82f6)](https://pypi.org/project/smartmoneyapi/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-22c55e.svg)](LICENSE)
-[![API Status](https://img.shields.io/website?url=https%3A%2F%2Fapi.smartmoneyapi.com%2Fv1%2Fstats&label=API%20status&up_message=operational&down_message=degraded&color=22c55e)](https://status.smartmoneyapi.com)
-[![Docs](https://img.shields.io/badge/docs-smartmoneyapi.com-6366f1)](https://smartmoneyapi.com/docs.html)
-[![Website](https://img.shields.io/badge/website-smartmoneyapi.com-f59e0b)](https://smartmoneyapi.com)
-
----
-
-## What it is
-
-[SmartMoneyAPI](https://smartmoneyapi.com) is a trade-confirmation API for crypto bots. Your strategy fires a long or short signal — one call to `/v1/confirm` checks derivatives funding rates, open interest, long/short ratios, multi-exchange liquidation heatmaps, and on-chain whale positioning before your bot enters. It returns `CONFIRM_FULL`, `CONFIRM_REDUCED`, `VETO_SKIP`, or `NO_DATA_SKIP` — not a prediction, but a real-time multi-factor confluence read.
-
-Full API docs: [smartmoneyapi.com/docs.html](https://smartmoneyapi.com/docs.html)
-
----
-
-## Quickstart
-
-**Install:**
+Thin client for [SmartMoneyAPI](https://smartmoneyapi.com): cross-exchange
+derivatives, whale positioning, executed liquidation feeds, options, ETF flows,
+on-chain metrics, and a keyless deep archive.
 
 ```bash
 pip install smartmoneyapi
-# or, from source:
-pip install git+https://github.com/tashiardit/smartmoneyapi-python.git
 ```
 
-**Get a free API key** at [smartmoneyapi.com/pricing.html](https://smartmoneyapi.com/pricing.html) (50 calls/day, no credit card).
-
-```bash
-export SMARTMONEY_API_KEY=sm_your_key_here
-```
-
-**Call it:**
+**Most of this works without an API key.** Construct the client with no
+arguments and every keyless endpoint answers, at a reduced row cap and a per-IP
+throttle.
 
 ```python
 from smartmoneyapi import SmartMoneyClient
 
-client = SmartMoneyClient()                # reads SMARTMONEY_API_KEY env var
-result = client.confirm("BTC", "long")
-
-print(result["action"])       # CONFIRM_FULL | CONFIRM_REDUCED | CONFIRM_MINIMAL | VETO_SKIP | NO_DATA_SKIP
-print(result["confidence"])   # HIGH | MEDIUM | LOW | VETO | NO_DATA
-print(result["composite"])    # -1.0 → +1.0 confluence score (not a win-rate)
-print(result["size_mult"])    # suggested position-size multiplier, e.g. 1.5 or 0.5
+client = SmartMoneyClient()                       # no key
+cov = client.history_coverage()                   # what the archive holds
+heat = client.liquidation_heatmap("BTC")          # executed liquidations
+rows = client.history("whale_positions", symbol="BTC", days=7, limit=500)
 ```
 
-**Response shape:**
-
-```json
-{
-  "symbol": "BTC",
-  "direction": "long",
-  "action": "CONFIRM_FULL",
-  "confidence": "HIGH",
-  "composite": 0.74,
-  "size_mult": 1.5,
-  "deriv_score": 0.81,
-  "onchain_score": 0.52,
-  "whale_score": 0.67,
-  "factors": {
-    "derivatives": { "score": 0.81, "weight": 0.40, "weighted": 0.324 },
-    "onchain":     { "score": 0.52, "weight": 0.35, "weighted": 0.182, "source": "coinmetrics" },
-    "whale":       { "score": 0.67, "weight": 0.25, "weighted": 0.168 }
-  },
-  "adjustments": { "agreement": 0.03, "trend": 0.01, "rsi_1h": 0.0, "streak_decay": 0.0 },
-  "coverage": { "derivatives": true, "whale": true, "onchain": true },
-  "reasons": ["Funding neutral across venues", "Open interest expanding long", "Whale flow 63% long"]
-}
-```
-
-Your bot reads `action`. `composite` runs -1.0 → +1.0 and is a confluence read — **not a win-rate** (see [calibration](https://smartmoneyapi.com/calibration.html)).
-
----
-
-## Flow diagram
-
-```mermaid
-flowchart LR
-    BOT["Your trading bot\n(strategy signal)"]
-    SDK["SmartMoneyClient\n.confirm(symbol, direction)"]
-    API["POST /v1/confirm\napi.smartmoneyapi.com"]
-
-    subgraph checks ["Multi-factor check"]
-        D["Derivatives\nfunding · OI · LSR"]
-        L["Liquidations\nrealized heatmap\n(Binance/OKX/Bybit/…)"]
-        W["Whale positioning\n2000 wallets · HL leaderboard"]
-        O["On-chain\nMVRV · exchange flows\nactive addresses"]
-    end
-
-    RESULT["action: CONFIRM_FULL\nconfidence: HIGH\ncomposite: 0.74\nsize_mult: 1.5"]
-
-    BOT --> SDK --> API --> checks --> RESULT
-```
-
----
-
-## Endpoint reference
-
-| Endpoint | Tier | Returns |
-|---|---|---|
-| `GET /v1/confirm` | Free+ | Multi-factor trade confirmation: `action`, `confidence`, `composite`, `factors`, `reasons` |
-| `GET /v1/stats` | Public | Live signal performance + methodology (win-rates with sample sizes) |
-| `GET /v1/signals/performance` | Public | Forward-holdout signal track record per horizon |
-| `GET /v1/derivatives/screener` | Free (top 10) / Trader+ (full) | Funding heatmap, OI rankings, LSR across 500+ symbols |
-| `GET /v1/derivatives/funding-arb` | Trader+ | Funding-rate arbitrage opportunities (cross-venue spreads) |
-| `GET /v1/whales/events` | Public | Recent whale wallet trade events |
-| `GET /v1/whales/summary` | Public | Aggregate whale positioning by symbol |
-| `GET /v1/whale-consensus` | Trader+ | Cross-chain whale consensus with per-chain flow breakdown |
-| `GET /v1/liquidations` | Free (levels) / Trader+ (heatmap) | Leverage-projected levels + real executed liq heatmap (multi-exchange) |
-| `GET /v1/liquidations/onchain` | Trader+ | Executed DeFi lending liquidations from BSC + Avalanche nodes |
-| `GET /v1/onchain/tvl` | Public | DeFi TVL (DeFiLlama) |
-| `GET /v1/onchain/btc` | Public | BTC on-chain: hash rate, difficulty, mempool, transactions |
-| `GET /v1/onchain/gas` | Public | Ethereum gas (Etherscan) |
-| `GET /v1/etf/flows` | Public | BTC + ETH ETF daily flows (SoSoValue) |
-| `GET /v1/options/btc` | Public | BTC options: PCR, max pain, OI by strike (Deribit) |
-| `GET /v1/options/eth` | Public | ETH options: PCR, max pain, OI by strike (Deribit) |
-| `GET /v1/market/indices` | Public | Altcoin Season Index, BTC dominance, CME basis |
-| `GET /v1/signals/recent` | Public | Most recent signals with outcome resolution status |
-| `GET /v1/shadow-gate/decisions` | Trader+ | Shadow-gate decision log (latency + pass/fail per signal) |
-| `POST /v1/alerts/conditions` | Pro | Create a custom threshold alert (funding, whale %, composite, …) |
-| `POST /v1/webhooks` | Pro | Register HMAC-signed outbound webhook for signal events |
-| `POST /v1/tradingview/webhook` | Trader+ | Inbound TradingView alert → auto-confirm |
-| `GET /v1/usage` | Authed | Your plan usage + remaining calls |
-
-Base URL: `https://api.smartmoneyapi.com`  ·  Auth header: `X-API-Key: <your_key>`
-
----
-
-## Tiers
-
-| Tier | Calls / day | Symbols | Key endpoints |
-|---|---|---|---|
-| **Free** | 50 | BTC only | `/v1/confirm`, public market data, derivatives screener (top 10) |
-| **Trader** | 1,000 | All 200+ | Full screener, liquidation heatmap, on-chain liqs, whale consensus, funding-arb |
-| **Pro** | 5,000 | All + priority | + Custom alerts, outbound webhooks, full historical data |
-| **Enterprise** | 100,000 | All + SLA | Dedicated support, custom limits, raw data access |
-
-Get your key: [smartmoneyapi.com/pricing.html](https://smartmoneyapi.com/pricing.html)
-
----
-
-## More examples
-
-**Liquidation heatmap:**
+With a key you also get trade confirmation, the full liquidation book, and the
+paid feeds:
 
 ```python
-liqs = client.get_liquidations("ETH")
-print(liqs["cascade_risk"])          # HIGH | MEDIUM | LOW
-print(liqs["nearest_long_liq_pct"])  # % below current price
-print(liqs["realized_heatmap"]["totals"]["total_notional"])
+client = SmartMoneyClient("sm_xxxxxxxxxxxx")      # or set SMARTMONEY_API_KEY
+res = client.confirm("BTC", "long")
+
+if res["action"] == "NO_DATA_SKIP":
+    ...            # explicit "nothing measured for this symbol" — not a weak read
+elif res["action"].startswith("CONFIRM"):
+    size = base_size * res["size_mult"]
+else:
+    ...            # VETO_SKIP — stand aside
 ```
 
-**On-chain DeFi liquidations (Trader+):**
+`composite` runs −1.0 → +1.0 and is a multi-factor confluence read, **not** a
+win-rate.
+
+## Design
+
+- **Nothing is reshaped.** Each method returns the API's own JSON, so the
+  published contract describes exactly what you hold.
+- **Keys are optional, and enforced early.** A method that needs a key raises
+  `SmartMoneyError` *before* the request instead of letting the server 401.
+- **Errors carry the server's answer.** `SmartMoneyError` exposes `.status` and
+  `.body`, so a rejected archive filter tells you which filters are supported.
+- **No release needed for a new endpoint.** `client.get("/v1/anything", **params)`
+  reaches any documented GET.
+
+## What it covers
+
+| Area | Methods |
+|---|---|
+| Trade confirmation | `confirm`, `smart_stop` |
+| Liquidations | `liquidations`, `liquidation_heatmap`, `liquidation_symbols`, `simulate_liquidations`, `onchain_liquidations` |
+| Deep archive (keyless) | `history_coverage`, `history` |
+| Whales | `whale_events`, `whale_consensus`, `whale_summary`, `whale_crowding`, `wallet_profile` |
+| Derivatives | `screener`, `funding_heatmap`, `funding_arb`, `smart_money_flow` |
+| Signals & track record | `recent_signals`, `signal_performance`, `track_record`, `stats` |
+| Market data | `onchain_metrics`, `options_chain`, `options_gex`, `etf_flows`, `market_indices`, `news`, `fear_greed`, `seasonality`, `stocks`, `symbols`, `plans` |
+| Status | `health`, `node_health` |
+| Your account | `usage`, `list_alerts`, `create_alert`, `delete_alert`, `alert_history`, `register_webhook` |
+
+The account methods act on your account rather than returning market data, which
+is why they are documented at <https://smartmoneyapi.com/docs> and deliberately
+left out of the public OpenAPI mirror. They are here because a client is the
+right place to call them from.
+
+## The deep archive is public
+
+`client.history(table, ...)` federates the live database and the consolidated
+cold archive into one newest-first response. Measured against
+`/v1/history/coverage` on 2026-08-28: **115,706,185 rows across 9 tables**,
+oldest row **2026-03-18**. It is still accruing, so treat that count as a
+floor and re-read the endpoint for the current figure.
 
 ```python
-onchain = client.get_onchain_liquidations(chain="bsc", limit=50)
-for liq in onchain["liquidations"]:
-    print(liq["protocol"], liq["debt_symbol"], liq["repay_usd"])
+rows = client.history("whale_positions", symbol="BTC", days=30, limit=5000)
+print(rows["count"], rows["truncated"], rows["sources"])
 ```
 
-**Custom alerts (Pro):**
+`sources` names every shard the answer came from. A filter the archive cannot
+serve from an index raises `SmartMoneyError` with HTTP 400 naming the ones it
+can — the query is never silently widened into a different question.
 
-```python
-# Fire a Telegram alert when BTC funding rate exceeds 0.05%
-client.create_alert(
-    name="BTC funding spike",
-    metric="funding_rate",
-    operator="gt",
-    threshold=0.05,
-    symbol="BTC",
-    delivery="telegram",
-    cooldown_minutes=60,
-)
-```
+## Verified, not illustrated
 
-**HMAC webhook verification:**
+Every field name in this README and in the docstrings was observed on a real
+response on **2026-08-28**; the 29 keyless methods were each called against the
+live API on that date. Where a shape could not be verified, the docstring says
+what it does not know rather than filling the gap.
 
-```python
-from smartmoneyapi import verify_webhook_signature
+## Version
 
-# In your webhook handler:
-is_valid = verify_webhook_signature(
-    raw_body=request.body,
-    signature_header=request.headers["X-SmartMoney-Signature"],
-    secret="your-registered-secret",
-)
-```
+`1.2.0` — matches the published contract dated `2026-08-28`
+(`smartmoneyapi.SPEC_VERSION`).
 
----
+## Links
 
-## A note on signal accuracy
+- Machine-readable contract: <https://github.com/tashiardit/smartmoneyapi-docs>
+- Interactive docs: <https://smartmoneyapi.com/docs>
+- Get a key: <https://smartmoneyapi.com/signup>
+- Pricing: <https://smartmoneyapi.com/pricing>
 
-Published accuracy figures are measured on resolved signals and are in-sample. Forward-holdout track record is live and accruing at [smartmoneyapi.com/calibration.html](https://smartmoneyapi.com/calibration.html). `composite` is a confluence score, not a predicted win-rate. Crypto trading involves substantial risk — this is decision support, not financial advice.
-
----
-
-## Contributing
-
-Issues and PRs welcome. This repo is the public SDK + examples. The API backend is private.
-
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/my-change`)
-3. Commit your changes
-4. Open a PR
-
----
+> Not financial advice. Crypto trading involves substantial risk, including loss
+> of capital. Past signal accuracy does not guarantee future results.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT

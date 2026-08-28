@@ -1,11 +1,29 @@
 [project]
 name = "smartmoneyapi"
-version = "1.0.0"
-description = "Python client for SmartMoneyAPI — trade confirmation API for crypto bots"
+version = "1.2.0"
+description = "Python client for SmartMoneyAPI — crypto derivatives, whale positioning, liquidations and a 115M-row public archive"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = ["requests"]
 license = { text = "MIT" }
+keywords = ["crypto", "trading", "derivatives", "liquidations", "whales", "api"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Financial and Insurance Industry",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+
 [project.urls]
 Homepage = "https://smartmoneyapi.com"
 Documentation = "https://smartmoneyapi.com/docs"
+"API contract" = "https://github.com/tashiardit/smartmoneyapi-docs"
+Source = "https://github.com/tashiardit/smartmoneyapi-python"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["smartmoneyapi"]
