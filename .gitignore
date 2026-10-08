@@ -21,9 +21,6 @@ id_ed25519
 id_ecdsa
 *.secret
 
-# Claude Code
-.claude/
-CLAUDE.md
 
 # IDEs / OS
 .DS_Store

@@ -1,6 +1,6 @@
 [project]
 name = "smartmoneyapi"
-version = "1.2.0"
+version = "1.2.1"
 description = "Python client for SmartMoneyAPI — crypto derivatives, whale positioning, liquidations and a 115M-row public archive"
 readme = "README.md"
 requires-python = ">=3.8"

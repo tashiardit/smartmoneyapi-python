@@ -95,7 +95,7 @@ what it does not know rather than filling the gap.
 
 ## Version
 
-`1.2.0` — matches the published contract dated `2026-08-28`
+`1.2.1` — written against the published contract dated `2026-08-28`; no method calls a retired route
 (`smartmoneyapi.SPEC_VERSION`).
 
 ## Links

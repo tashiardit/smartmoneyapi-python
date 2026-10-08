@@ -17,7 +17,7 @@ import os
 import requests
 
 __all__ = ["SmartMoneyClient", "SmartMoneyError", "verify_webhook_signature"]
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 
 #: Contract this client was generated against.
 SPEC_VERSION = "2026-08-28"
