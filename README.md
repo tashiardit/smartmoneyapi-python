@@ -55,7 +55,7 @@ win-rate.
 | Area | Methods |
 |---|---|
 | Trade confirmation | `confirm`, `smart_stop` |
-| Liquidations | `liquidations`, `liquidation_heatmap`, `liquidation_symbols`, `simulate_liquidations`, `onchain_liquidations` |
+| Liquidations | `liquidations`, `liquidation_map_history`, `liquidation_map_history_range`, `liquidation_heatmap`, `liquidation_symbols`, `simulate_liquidations`, `onchain_liquidations` |
 | Deep archive (keyless) | `history_coverage`, `history` |
 | Whales | `whale_events`, `whale_consensus`, `whale_summary`, `whale_crowding`, `wallet_profile` |
 | Derivatives | `screener`, `funding_heatmap`, `funding_arb`, `smart_money_flow` |

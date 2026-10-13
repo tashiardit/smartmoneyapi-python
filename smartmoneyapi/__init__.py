@@ -17,7 +17,7 @@ import os
 import requests
 
 __all__ = ["SmartMoneyClient", "SmartMoneyError", "verify_webhook_signature"]
-__version__ = "1.2.1"
+__version__ = "1.3.0"
 
 #: Contract this client was generated against.
 SPEC_VERSION = "2026-08-28"
@@ -123,6 +123,28 @@ class SmartMoneyClient:
         """
         self._need_key("/v1/liquidations")
         return self.get("/v1/liquidations", symbol=symbol)
+
+    def liquidation_map_history(self, symbol="BTC", at=None):
+        """The estimated liquidation map as archived at or before ``at``
+        (unix seconds or ISO 8601; default: now). Needs a Trader+ key.
+
+        Returns the archived snapshot with its real ``snapshot_ts`` (when the
+        map was measured, never after ``at``), ``archived: true``,
+        ``estimated: true``, ``model_version`` and ``degraded``. History starts
+        when archiving began; earlier times answer 404 ``no_snapshot_before``
+        with ``earliest_snapshot_ts``.
+        """
+        self._need_key("/v1/liquidations/map/history")
+        return self.get("/v1/liquidations/map/history", symbol=symbol, at=at)
+
+    def liquidation_map_history_range(self, symbol="BTC", start=None, end=None,
+                                      limit=None):
+        """Timestamps of archived liquidation-map snapshots between ``start``
+        and ``end`` (capped by ``limit``), plus ``latest_snapshot_ts``.
+        Needs a Trader+ key."""
+        self._need_key("/v1/liquidations/map/history/range")
+        return self.get("/v1/liquidations/map/history/range", symbol=symbol,
+                        start=start, end=end, limit=limit)
 
     def liquidation_heatmap(self, symbol="BTC", window_minutes=None,
                             price_buckets=None):
