@@ -69,6 +69,30 @@ is why they are documented at <https://smartmoneyapi.com/docs> and deliberately
 left out of the public OpenAPI mirror. They are here because a client is the
 right place to call them from.
 
+## Historical liquidation maps
+
+Needs a Trader+ key. A map is an *estimate*, and the history holds two kinds:
+maps stored when they were computed (`archived: true`) and maps reconstructed
+later from inputs recorded at that time (`archived: false`, `reconstructed: true`).
+Pass `archived_only=True` to exclude the reconstructed ones.
+
+```python
+client = SmartMoneyClient()               # reads SMARTMONEY_API_KEY
+m = client.liquidation_map_history("BTC", at="2026-09-15T12:00:00Z")
+print(m["snapshot_ts"], m["archived"], m["regime"])
+if m["reconstructed"]:
+    print(m["basis"], m["inputs_recorded_through"], m["inputs_age_s"], m["avail_basis"])
+
+ts = client.liquidation_map_history_range("BTC", start="2026-09-15", end="2026-09-16",
+                                          archived_only=True)
+```
+
+`snapshot_ts` is when the map was measured, never after `at`. `regime` and
+`regime_note` say whether the whale ladder uses exchange-reported liquidation
+prices (from 2026-08-28) or modelled levels only. A 404 carries a reason:
+`no_snapshot_before`, `no_snapshot_near` (gap over an hour) or
+`symbol_not_archived`. `BTC` and `BTCUSDT` are both accepted.
+
 ## The deep archive is public
 
 `client.history(table, ...)` federates the live database and the consolidated
@@ -95,7 +119,7 @@ what it does not know rather than filling the gap.
 
 ## Version
 
-`1.2.1` — written against the published contract dated `2026-08-28`; no method calls a retired route
+`1.4.0` — written against the published contract dated `2026-08-28`; no method calls a retired route
 (`smartmoneyapi.SPEC_VERSION`).
 
 ## Links

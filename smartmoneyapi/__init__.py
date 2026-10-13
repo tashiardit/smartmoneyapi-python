@@ -17,10 +17,15 @@ import os
 import requests
 
 __all__ = ["SmartMoneyClient", "SmartMoneyError", "verify_webhook_signature"]
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 
 #: Contract this client was generated against.
 SPEC_VERSION = "2026-08-28"
+
+
+def _flag(v):
+    """True -> "1"; None/False -> omitted (the server treats absence as off)."""
+    return "1" if v else None
 
 
 class SmartMoneyError(RuntimeError):
@@ -124,27 +129,53 @@ class SmartMoneyClient:
         self._need_key("/v1/liquidations")
         return self.get("/v1/liquidations", symbol=symbol)
 
-    def liquidation_map_history(self, symbol="BTC", at=None):
-        """The estimated liquidation map as archived at or before ``at``
-        (unix seconds or ISO 8601; default: now). Needs a Trader+ key.
+    def liquidation_map_history(self, symbol="BTC", at=None, archived_only=None):
+        """The estimated liquidation map at or before ``at`` (unix seconds or
+        ISO 8601). ``at`` is required by the server. Needs a Trader+ key.
+        ``symbol`` may be ``BTC`` or ``BTCUSDT``.
 
-        Returns the archived snapshot with its real ``snapshot_ts`` (when the
-        map was measured, never after ``at``), ``archived: true``,
-        ``estimated: true``, ``model_version`` and ``degraded``. History starts
-        when archiving began; earlier times answer 404 ``no_snapshot_before``
-        with ``earliest_snapshot_ts``.
+        ``archived_only=True`` restricts the answer to maps stored when they
+        were computed; by default a reconstructed map may be returned too.
+
+        Archived versus reconstructed -- read these fields before you use a map:
+
+        - ``archived`` is true for a map stored at the time; false for a
+          RECONSTRUCTED one (``reconstructed: true``), computed later from
+          inputs recorded at ``snapshot_ts``. It is never the map that was
+          served then.
+        - ``snapshot_ts`` is when the map was measured, never after ``at``.
+          ``estimated`` is always true.
+        - ``regime`` / ``regime_note`` say which liquidation prices the whale
+          ladder rests on: exchange-reported prices from 2026-08-28 onward,
+          modelled levels only before that date.
+        - Reconstructed maps also carry ``basis``, ``inputs_recorded_through``,
+          ``inputs_age_s`` (how much older than ``snapshot_ts`` the newest
+          input is), ``avail_basis`` (the rule that stamped it) and
+          ``computed_ts``.
+
+        Errors (``SmartMoneyError``, ``.status == 404``): ``no_snapshot_before``
+        (nothing at or before ``at``; ``earliest_snapshot_ts`` is given),
+        ``no_snapshot_near`` (the archive has a gap longer than an hour before
+        ``at``) and ``symbol_not_archived`` (core symbols only).
         """
         self._need_key("/v1/liquidations/map/history")
-        return self.get("/v1/liquidations/map/history", symbol=symbol, at=at)
+        return self.get("/v1/liquidations/map/history", symbol=symbol, at=at,
+                        archived_only=_flag(archived_only))
 
     def liquidation_map_history_range(self, symbol="BTC", start=None, end=None,
-                                      limit=None):
-        """Timestamps of archived liquidation-map snapshots between ``start``
-        and ``end`` (capped by ``limit``), plus ``latest_snapshot_ts``.
-        Needs a Trader+ key."""
+                                      limit=None, archived_only=None):
+        """Timestamps of liquidation-map snapshots between ``start`` and ``end``
+        (capped by ``limit``), plus ``latest_snapshot_ts``. Needs a Trader+ key.
+
+        ``archived_only=True`` lists only maps stored when computed and leaves
+        out reconstructed ones; see :meth:`liquidation_map_history` for what the
+        two kinds mean. ``symbol`` may be ``BTC`` or ``BTCUSDT``; an unarchived
+        symbol answers 404 ``symbol_not_archived``.
+        """
         self._need_key("/v1/liquidations/map/history/range")
         return self.get("/v1/liquidations/map/history/range", symbol=symbol,
-                        start=start, end=end, limit=limit)
+                        start=start, end=end, limit=limit,
+                        archived_only=_flag(archived_only))
 
     def liquidation_heatmap(self, symbol="BTC", window_minutes=None,
                             price_buckets=None):
