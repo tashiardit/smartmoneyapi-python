@@ -17,7 +17,7 @@ import os
 import requests
 
 __all__ = ["SmartMoneyClient", "SmartMoneyError", "verify_webhook_signature"]
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 #: Contract this client was generated against.
 SPEC_VERSION = "2026-08-28"
@@ -418,6 +418,54 @@ class SmartMoneyClient:
             "url": url, "events": events, "symbols": symbols, "secret": secret,
         })
 
+    # ------------------------------------------------ referral QR (partners)
+    def referral_qr(self):
+        """Your referral QR code and its scan statistics. Needs a key.
+
+        Available to approved affiliate partners on the Trader plan or higher.
+        Returns ``status`` (``none`` | ``claimed`` | ``creating`` | ``ready`` |
+        ``failed``), ``short_url`` (set once ``ready``), ``destination``,
+        ``has_image`` and, when ready, ``stats`` (``total_scans``,
+        ``unique_scans`` -- an estimate of distinct scanner-days, not people --,
+        ``scans_per_day`` as ``{date, scans}``, ``top_countries`` as
+        ``{country, scans}``; nothing finer than country), ``stats_as_of`` and
+        ``stats_stale``. ``stats_unavailable`` is true when the statistics
+        could not be read. Not an approved partner: HTTP 403
+        ``not_an_approved_partner``; plan too low: 403 ``plan_required``.
+        """
+        self._need_key("/v1/referrals/qr")
+        return self.get("/v1/referrals/qr")
+
+    def create_referral_qr(self):
+        """Create your referral QR code, or return the existing one. Needs a key.
+
+        Idempotent: one code per partner. HTTP 200 returns the same shape as
+        :meth:`referral_qr` without ``stats``; while another request is still
+        creating it the status is ``creating`` (HTTP 202). A temporary
+        upstream failure raises ``SmartMoneyError`` with HTTP 503.
+        """
+        self._need_key("/v1/referrals/qr")
+        return self._request("POST", "/v1/referrals/qr")
+
+    def referral_qr_image(self, format="png"):
+        """The QR code image as ``bytes``. ``format`` is ``"png"`` or ``"svg"``.
+
+        Needs a key. Raises ``SmartMoneyError`` with HTTP 404 ``no_qr_code``
+        until :meth:`create_referral_qr` has produced a ``ready`` code.
+        """
+        self._need_key("/v1/referrals/qr/image")
+        if format not in ("png", "svg"):
+            raise ValueError("format must be 'png' or 'svg'")
+        r = self._session.request(
+            "GET", self.base + "/v1/referrals/qr/image", params={"format": format},
+            headers=self._headers(), timeout=self.timeout)
+        if not r.ok:
+            try:
+                detail = r.json()
+            except ValueError:
+                detail = r.text[:500]
+            raise SmartMoneyError(r.status_code, detail, "/v1/referrals/qr/image")
+        return r.content
 
     # ------------------------------------------------- 1.1 compatibility aliases
     # Renamed in 1.2.0 for consistency with the published contract. The old
