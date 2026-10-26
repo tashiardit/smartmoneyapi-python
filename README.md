@@ -47,6 +47,10 @@ win-rate.
   `SmartMoneyError` *before* the request instead of letting the server 401.
 - **Errors carry the server's answer.** `SmartMoneyError` exposes `.status` and
   `.body`, so a rejected archive filter tells you which filters are supported.
+  A keyed call to an unknown `/v1/...` path raises with status 404 and, when
+  the path is close to a real endpoint, `.body["suggestions"]` lists the real
+  paths (`.body["docs"]` links the reference). Anonymous calls to an unknown
+  path get 401 first.
 - **No release needed for a new endpoint.** `client.get("/v1/anything", **params)`
   reaches any documented GET.
 
