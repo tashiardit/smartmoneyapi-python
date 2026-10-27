@@ -17,10 +17,10 @@ import os
 import requests
 
 __all__ = ["SmartMoneyClient", "SmartMoneyError", "verify_webhook_signature"]
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 
 #: Contract this client was generated against.
-SPEC_VERSION = "2026-08-28"
+SPEC_VERSION = "2026-10-27"
 
 
 def _flag(v):
@@ -307,6 +307,21 @@ class SmartMoneyClient:
     def stats(self):
         """Headline accuracy statistics, with their sample sizes. No key needed."""
         return self.get("/v1/stats")
+
+    def macro(self):
+        """One composite macro object. No key needed.
+
+        Top-level keys (observed 2026-10-27): ``volatility``, ``fear_greed``,
+        ``derivatives_regime``, ``cot``, ``withheld``, ``unavailable``,
+        ``warming``, ``updated`` and ``stale``. Each component carries its own
+        ``status`` (``ok`` or ``warming``), ``updated`` and ``stale``.
+        ``derivatives_regime`` carries a ``label`` plus ``included_oi_share``
+        and ``excluded_oi_usd``, and answers ``status="unavailable"`` with no
+        label when coverage is too thin. Components the API does not serve are
+        listed in ``withheld`` with a ``reason``; read that list rather than
+        assuming a missing field is zero.
+        """
+        return self.get("/v1/macro")
 
     def plans(self):
         """Live pricing and per-tier limits, straight from the pricing manifest.

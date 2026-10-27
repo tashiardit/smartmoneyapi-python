@@ -64,7 +64,7 @@ win-rate.
 | Whales | `whale_events`, `whale_consensus`, `whale_summary`, `whale_crowding`, `wallet_profile` |
 | Derivatives | `screener`, `funding_heatmap`, `funding_arb`, `smart_money_flow` |
 | Signals & track record | `recent_signals`, `signal_performance`, `track_record`, `stats` |
-| Market data | `onchain_metrics`, `options_chain`, `options_gex`, `etf_flows`, `market_indices`, `news`, `fear_greed`, `seasonality`, `stocks`, `symbols`, `plans` |
+| Market data | `onchain_metrics`, `options_chain`, `options_gex`, `etf_flows`, `market_indices`, `news`, `fear_greed`, `macro`, `seasonality`, `stocks`, `symbols`, `plans` |
 | Status | `health`, `node_health` |
 | Referral QR (approved partners, Trader+, key) | `referral_qr`, `create_referral_qr`, `referral_qr_image` |
 | Your account | `usage`, `list_alerts`, `create_alert`, `delete_alert`, `alert_history`, `register_webhook` |
@@ -124,7 +124,7 @@ what it does not know rather than filling the gap.
 
 ## Version
 
-`1.5.0` — written against the published contract dated `2026-08-28`; no method calls a retired route
+`1.6.0` — adds `macro()` (`GET /v1/macro`); written against the published contract dated `2026-10-27`; no method calls a retired route
 (`smartmoneyapi.SPEC_VERSION`).
 
 ## Links
