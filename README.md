@@ -124,7 +124,7 @@ what it does not know rather than filling the gap.
 
 ## Version
 
-`1.6.0` — adds `macro()` (`GET /v1/macro`); written against the published contract dated `2026-10-27`; no method calls a retired route
+`1.6.1` — `funding_arb` documents the 0.0005 default and the 400 on invalid `min_spread`; written against the published contract dated `2026-10-29`; no method calls a retired route
 (`smartmoneyapi.SPEC_VERSION`).
 
 ## Links

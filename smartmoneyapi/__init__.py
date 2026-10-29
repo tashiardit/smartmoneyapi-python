@@ -17,10 +17,10 @@ import os
 import requests
 
 __all__ = ["SmartMoneyClient", "SmartMoneyError", "verify_webhook_signature"]
-__version__ = "1.6.0"
+__version__ = "1.6.1"
 
 #: Contract this client was generated against.
-SPEC_VERSION = "2026-10-27"
+SPEC_VERSION = "2026-10-29"
 
 
 def _flag(v):
@@ -279,7 +279,12 @@ class SmartMoneyClient:
         return self.get("/v1/derivatives/funding-heatmap")
 
     def funding_arb(self, min_spread=None):
-        """Cross-venue funding-rate arbitrage scanner. Needs a Trader+ key."""
+        """Cross-venue funding-rate arbitrage scanner. Needs a Trader+ key.
+
+        ``min_spread`` is on an 8-hour basis (0.0005 = 0.05%); omitted or blank
+        uses the server default 0.0005. A negative, NaN, infinite or non-numeric
+        value is rejected with HTTP 400 (``bad_request``) and raises SmartMoneyError.
+        """
         self._need_key("/v1/funding-arb")
         return self.get("/v1/funding-arb", min_spread=min_spread)
 
